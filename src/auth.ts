@@ -1,10 +1,5 @@
 import { ConfidentialClientApplication } from "@azure/msal-node";
 
-/**
- * Extracts a bearer token from Authorization header.
- * Works for:
- *   Authorization: Bearer <token>
- */
 export function getBearerTokenFromAuthHeader(authHeader?: string): string | null {
   if (!authHeader) return null;
   const prefix = "Bearer ";
@@ -13,13 +8,6 @@ export function getBearerTokenFromAuthHeader(authHeader?: string): string | null
   return token.length ? token : null;
 }
 
-/**
- * Azure App Service / Functions Easy Auth sometimes forwards the access token in headers.
- * Depending on configuration, you may see:
- *   x-ms-token-aad-access-token
- *
- * This helper tries both Authorization and Easy Auth header names.
- */
 export function getIncomingUserToken(headers: Record<string, string | undefined>): string | null {
   const authz = headers["authorization"] ?? headers["Authorization"];
   const fromAuthz = getBearerTokenFromAuthHeader(authz);
@@ -34,17 +22,16 @@ export function getIncomingUserToken(headers: Record<string, string | undefined>
   return easyAuthToken?.trim() || null;
 }
 
-/**
- * OBO: exchange incoming user token for a Power Platform API token.
- */
 export async function acquirePowerPlatformTokenOBO(userToken: string): Promise<string> {
   const tenantId = process.env.TENANT_ID;
-  const clientId = process.env.CS_INVOKE_CLIENT_ID;
-  const clientSecret = process.env.CS_INVOKE_CLIENT_SECRET;
-  const resource = process.env.POWERPLATFORM_RESOURCE;
+  const clientId = process.env.COPILOT_INVOKE_CLIENT_ID;
+  const clientSecret = process.env.COPILOT_INVOKE_CLIENT_SECRET;
+  const resource = process.env.POWERPLATFORM_RESOURCE || "https://api.powerplatform.com";
 
-  if (!tenantId || !clientId || !clientSecret || !resource) {
-    throw new Error("Missing env vars for OBO (TENANT_ID, CS_INVOKE_CLIENT_ID, CS_INVOKE_CLIENT_SECRET, POWERPLATFORM_RESOURCE).");
+  if (!tenantId || !clientId || !clientSecret) {
+    throw new Error(
+      "Missing env vars for OBO (TENANT_ID, COPILOT_INVOKE_CLIENT_ID, COPILOT_INVOKE_CLIENT_SECRET)."
+    );
   }
 
   const cca = new ConfidentialClientApplication({
@@ -55,7 +42,6 @@ export async function acquirePowerPlatformTokenOBO(userToken: string): Promise<s
     }
   });
 
-  // OBO uses resource/.default to request the delegated permissions your app has.
   const result = await cca.acquireTokenOnBehalfOf({
     oboAssertion: userToken,
     scopes: [`${resource}/.default`]
@@ -63,6 +49,13 @@ export async function acquirePowerPlatformTokenOBO(userToken: string): Promise<s
 
   if (!result?.accessToken) {
     throw new Error("OBO failed: no access token returned.");
+  }
+
+  try {
+    const claims = JSON.parse(Buffer.from(result.accessToken.split(".")[1], "base64").toString("utf8"));
+    console.log("OBO token claims (aud, scp):", { aud: claims?.aud, scp: claims?.scp });
+  } catch {
+    console.warn("Failed to decode OBO token claims.");
   }
 
   return result.accessToken;

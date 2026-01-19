@@ -1,8 +1,8 @@
 {
-  "name": "",
+  "name": "a2a-proxy",
   "version": "1.0.0",
-  "description": "",
-  "main": "dist/src/functions/*.js",
+  "description": "Azure Functions A2A proxy for Copilot Studio",
+  "main": "dist/functions/**/*.js",
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
