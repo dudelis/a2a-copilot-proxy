@@ -1,0 +1,51 @@
+@token = eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IlBjWDk4R1g0MjBUMVg2c0JEa3poUW1xZ3dNVSIsImtpZCI6IlBjWDk4R1g0MjBUMVg2c0JEa3poUW1xZ3dNVSJ9.eyJhdWQiOiJhcGk6Ly8yZjJiZTU4NC00ZWU3LTQ3MmYtYWU0OC1iZTIzNzlmYmU5NjUiLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC8xZTc4ODZiYi00YWQ4LTQ5MjQtYjU1OS0yOWM1ZjVmZWE4ZjUvIiwiaWF0IjoxNzY4OTIyMjc3LCJuYmYiOjE3Njg5MjIyNzcsImV4cCI6MTc2ODkyOTc3NywiYWNyIjoiMSIsImFpbyI6IkFiUUFTLzhiQUFBQVQ4Mm51QXZuYlVWamF3eHE4d2ZVWkZKd2VHWDJIazhqR3BpaG5yUjViUm56U2N0Q1NuZ0MzeHdJZjJUUmY1M1pYTTJkZEo5bGNQMGhXdlRERkNCMGs3VVZCMi9CVG5sbnMyL0FGb2ViTXlOekJHcitvNWkxL1VpTFlETXo2aDJQZERHTHUrTElvS0ZHVDdSS1FMdStlazN1V2hXaFVFb2QwQ094ckoxc2g0TmVqb0E0N05CaVpDMzc1N0dJMElXU2tXdUlYTEMxTEhHYWFoNDVSTmt5eDNFSzVKT0xmT04vZCtmT1NXNi9Tem89IiwiYW1yIjpbInB3ZCIsIm1mYSJdLCJhcHBpZCI6IjJmMmJlNTg0LTRlZTctNDcyZi1hZTQ4LWJlMjM3OWZiZTk2NSIsImFwcGlkYWNyIjoiMSIsImZhbWlseV9uYW1lIjoiU2lkaW91cyIsImdpdmVuX25hbWUiOiJEYXJ0aCIsImlwYWRkciI6IjQuMTg0LjIzMi4yMTEiLCJuYW1lIjoiRGFydGggU2lkaW91cyIsIm9pZCI6Ijk1ZTI0Mzc5LTMxMDItNDAyOC1iZmRhLWVjYzU0ZDkyYjljOSIsInJoIjoiMS5BVjhBdTRaNEh0aEtKRW0xV1NuRjlmNm85WVRsS3lfblRpOUhya2ktSTNuNzZXVVBBVHhmQUEuIiwic2NwIjoiYWNjZXNzX2FzX3VzZXIiLCJzaWQiOiIwMDExYmIyYS1lODQ4LTZlMTMtOGYwNS04NGMyOTNkN2E5NTYiLCJzdWIiOiJJSE83aUhhekxsaW1KT0NEdVVGbmRsTXZkRHlyZ256ZEdXM1lZck5ZTURzIiwidGlkIjoiMWU3ODg2YmItNGFkOC00OTI0LWI1NTktMjljNWY1ZmVhOGY1IiwidW5pcXVlX25hbWUiOiJEYXJ0aC5TaWRpb3VzQGZhbGxlbm9yZGVyLm9ubWljcm9zb2Z0LmNvbSIsInVwbiI6IkRhcnRoLlNpZGlvdXNAZmFsbGVub3JkZXIub25taWNyb3NvZnQuY29tIiwidXRpIjoiN0FnYjhiU3Y4VXlsdF93Z0ZISURBQSIsInZlciI6IjEuMCIsInhtc19mdGQiOiI4SlhycDFTU3NkTDQxT3FfUlh4YVhVdEVjb1FXcXlzNTRhQVJYVVpQNWZBQlpuSmhibU5sWXkxa2MyMXoifQ.AooULATzXLb01UXpe1mhqM8TwRiepEL25jeZgq8hujseZHkcIBU12qarzbG16pZChok3xpsB7iZg_TkkxS7s_ZTfNVXW3qMixtLIr2eMrWyxx0KhoAzMuALguZE9IR2OdabQHDbL68qIFkGYZtVJlIxOVUtrKboZaYIb7nwSODxxTatlIAewf8mbLshkBSLC7XxQc2ZlOZs8mYfcmli_a1QPi_WLYC2RWZiqg5W1wha9I3NrYM4pmsEDtcDPtOyms8hZa_S5X68B3G0WqI24Sjl7ZK-XGu2OWU8u7o4IvXOXrX_LRlHu1NNYSpJtyJVny1_F53AmEM7oGJGbO7qKkQ
+@base = http://localhost:7071
+
+### Request 1 (messageId = SAME_ID)
+POST {{base}}/a2a/jsonrpc
+Authorization: Bearer {{token}}
+Content-Type: application/json; charset=utf-8
+Accept: application/json,text/event-stream
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-1",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "contextId": "b03b2372-869d-49f1-9a8c-da15afe85913",
+      "kind": "message",
+      "messageId": "96b5c54b-14d9-b9ca-1346-1960be72034a",
+      "role": "user",
+      "parts": [
+        { "kind": "text", "text": "Provide the latest IT news." }
+      ]
+    }
+  }
+}
+
+### Request 2 (messageId = SAME_ID again)
+POST {{base}}/a2a/jsonrpc
+Authorization: Bearer {{token}}
+Content-Type: application/json; charset=utf-8
+Accept: application/json,text/event-stream
+
+{
+  "jsonrpc": "2.0",
+  "id": "req-2",
+  "method": "message/send",
+  "params": {
+    "message": {
+      "contextId": "b03b2372-869d-49f1-9a8c-da15afe85913",
+      "kind": "message",
+      "messageId": "96b5c54b-14d9-b9ca-1346-1960be72034a",
+      "role": "user",
+      "parts": [
+        {
+          "kind": "text",
+          "text": "Provide the latest news and updates in the field of Information Technology (IT), including major trends, company announcements, innovations, and industry developments."
+        }
+      ]
+    }
+  }
+}

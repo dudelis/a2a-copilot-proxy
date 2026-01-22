@@ -9,14 +9,29 @@ const handler = serverlessExpress({
   eventSourceName: "AZURE_HTTP_FUNCTION_V4"
 });
 
-console.log("A2AHttpClassic module loaded");
+console.log("A2AHttpClassic module loaded at", new Date().toISOString());
+
+let requestCounter = 0;
 
 export default async function (context: any, req: any): Promise<void> {
+  const reqNum = ++requestCounter;
+  const startTime = Date.now();
+  console.log(`[REQ#${reqNum}] A2AHttpClassic invoked at ${new Date().toISOString()}:`, JSON.stringify({ 
+    method: req?.method, 
+    url: req?.url,
+    contentLength: req?.headers?.["content-length"],
+    requestNum: reqNum
+  }));
+  
   try {
-    console.log("A2AHttpClassic invoked", { method: req?.method, url: req?.url });
-    return await handler(context, req);
+    const result = await handler(context, req);
+    console.log(`[REQ#${reqNum}] A2AHttpClassic completed in ${Date.now() - startTime}ms`);
+    return result;
   } catch (error) {
-    console.error("A2AHttpClassic handler error:", error);
+    console.error(`[REQ#${reqNum}] A2AHttpClassic handler error after ${Date.now() - startTime}ms:`, JSON.stringify({ 
+      message: error instanceof Error ? error.message : String(error), 
+      stack: error instanceof Error ? error.stack : undefined 
+    }));
     throw error;
   }
 }

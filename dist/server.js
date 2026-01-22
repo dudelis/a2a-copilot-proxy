@@ -11,6 +11,28 @@ const copilotstudio_1 = require("./copilotstudio");
 const sdk_1 = require("@a2a-js/sdk");
 const server_1 = require("@a2a-js/sdk/server");
 const express_2 = require("@a2a-js/sdk/server/express");
+const LOG_CHUNK_SIZE = Number(process.env.LOG_CHUNK_SIZE) || 8000;
+function safeStringify(value) {
+    try {
+        return typeof value === "string" ? value : JSON.stringify(value, null, 2);
+    }
+    catch {
+        return String(value);
+    }
+}
+function logInChunks(prefix, value, chunkSize = LOG_CHUNK_SIZE) {
+    const text = safeStringify(value);
+    const safeSize = Number.isFinite(chunkSize) && chunkSize > 0 ? chunkSize : 8000;
+    if (text.length <= safeSize) {
+        console.log(`${prefix}:`, text);
+        return;
+    }
+    const totalChunks = Math.ceil(text.length / safeSize);
+    for (let i = 0, chunk = 1; i < text.length; i += safeSize, chunk++) {
+        const end = Math.min(text.length, i + safeSize);
+        console.log(`${prefix} [chunk ${chunk}/${totalChunks}, chars ${i}-${end}]:`, text.slice(i, end));
+    }
+}
 const DEV_BYPASS_DOWNSTREAM = (process.env.DEV_BYPASS_DOWNSTREAM || "").toLowerCase() === "true";
 function buildAgentCard(publicBaseUrl) {
     return {
@@ -48,14 +70,38 @@ class ProxyExecutor {
                 requestContext?.task?.message?.parts ??
                 [];
             const textPart = parts.find((p) => p?.kind === "text");
-            const userText = textPart?.text ?? "";
+            let userText = textPart?.text ?? "";
+            if (!userText) {
+                const history = requestContext?.history ??
+                    requestContext?.task?.history ??
+                    requestContext?.input?.history ??
+                    [];
+                if (Array.isArray(history) && history.length > 0) {
+                    const lastUser = [...history].reverse().find((msg) => msg?.role === "user");
+                    const historyParts = Array.isArray(lastUser?.parts) ? lastUser.parts : [];
+                    const historyText = historyParts.find((p) => p?.kind === "text");
+                    userText = historyText?.text ?? "";
+                }
+            }
+            if (!userText) {
+                console.warn("ProxyExecutor: empty user message.", {
+                    keys: Object.keys(requestContext),
+                    hasHistory: Array.isArray(requestContext?.history)
+                });
+            }
+            const contextId = requestContext?.contextId ??
+                requestContext?.message?.contextId ??
+                requestContext?.userMessage?.contextId ??
+                requestContext?.input?.contextId ??
+                requestContext?.task?.contextId ??
+                requestContext?.task?.message?.contextId;
             if (DEV_BYPASS_DOWNSTREAM) {
                 const msg = {
                     kind: "message",
                     messageId: (0, uuid_1.v4)(),
                     role: "agent",
                     parts: [{ kind: "text", text: `Echo: ${userText}` }],
-                    contextId: requestContext.contextId
+                    contextId
                 };
                 eventBus.publish(msg);
                 eventBus.finished();
@@ -71,18 +117,36 @@ class ProxyExecutor {
             }
             const ppToken = await (0, auth_1.acquirePowerPlatformTokenOBO)(incomingUserToken);
             const downstreamText = await (0, copilotstudio_1.askCopilotStudioAgent)(ppToken, userText);
-            const msg = {
+            logInChunks("ProxyExecutor downstream response", downstreamText);
+            const taskId = requestContext.taskId;
+            const responseMsg = {
                 kind: "message",
                 messageId: (0, uuid_1.v4)(),
                 role: "agent",
                 parts: [{ kind: "text", text: downstreamText }],
-                contextId: requestContext.contextId
+                contextId,
+                taskId
             };
-            eventBus.publish(msg);
+            // Publish a completed Task (not just a Message) so Copilot Studio knows the task is done
+            const completedTask = {
+                kind: "task",
+                id: taskId,
+                contextId,
+                status: {
+                    state: "completed",
+                    message: responseMsg,
+                    timestamp: new Date().toISOString()
+                },
+                history: [responseMsg]
+            };
+            eventBus.publish(completedTask);
             eventBus.finished();
+            console.log("ProxyExecutor finished response with completed Task:", taskId);
         }
         catch (error) {
             console.error("ProxyExecutor error:", error);
+            const taskId = requestContext.taskId;
+            const contextId = requestContext.contextId;
             const errorMsg = {
                 kind: "message",
                 messageId: (0, uuid_1.v4)(),
@@ -93,9 +157,22 @@ class ProxyExecutor {
                         text: `Error processing request: ${error instanceof Error ? error.message : "Unknown error"}`
                     }
                 ],
-                contextId: requestContext.contextId
+                contextId,
+                taskId
             };
-            eventBus.publish(errorMsg);
+            // Publish a failed Task so Copilot Studio knows the task is done (even with error)
+            const failedTask = {
+                kind: "task",
+                id: taskId,
+                contextId,
+                status: {
+                    state: "failed",
+                    message: errorMsg,
+                    timestamp: new Date().toISOString()
+                },
+                history: [errorMsg]
+            };
+            eventBus.publish(failedTask);
             eventBus.finished();
         }
     }
@@ -108,9 +185,46 @@ function buildExpressApp(publicBaseUrl) {
     app.use(express_1.default.json());
     app.use(express_1.default.urlencoded({ extended: true }));
     app.use((req, res, next) => {
+        const headers = { ...req.headers };
+        if (headers.authorization) {
+            headers.authorization = "[redacted]";
+        }
+        if (headers["x-ms-token-aad-access-token"]) {
+            headers["x-ms-token-aad-access-token"] = "[redacted]";
+        }
+        if (headers["x-ms-token-aad-id-token"]) {
+            headers["x-ms-token-aad-id-token"] = "[redacted]";
+        }
+        logInChunks("Incoming request", {
+            method: req.method,
+            path: req.path,
+            contentLength: req.headers["content-length"],
+            headers,
+            body: req.body
+        });
+        const originalJson = res.json.bind(res);
+        const originalSend = res.send.bind(res);
+        const originalEnd = res.end.bind(res);
+        res.json = (body) => {
+            logInChunks("Outgoing response (json)", { path: req.path, status: res.statusCode, body });
+            return originalJson(body);
+        };
+        res.send = (body) => {
+            logInChunks("Outgoing response (send)", { path: req.path, status: res.statusCode, body });
+            return originalSend(body);
+        };
+        res.end = ((chunk, encoding, cb) => {
+            console.log(`Response ended for ${req.method} ${req.path} - status: ${res.statusCode}, headersSent: ${res.headersSent}, finished: ${res.writableFinished}`);
+            return originalEnd(chunk, encoding, cb);
+        });
+        next();
+    });
+    app.use((req, res, next) => {
         res.setHeader("Access-Control-Allow-Origin", "*");
         res.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
         res.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization");
+        // Force connection close to prevent keep-alive issues with A2A clients
+        res.setHeader("Connection", "close");
         if (req.method === "OPTIONS") {
             res.status(200).end();
             return;
@@ -124,20 +238,48 @@ function buildExpressApp(publicBaseUrl) {
         rawHeaders: req.headers
     });
     const requestHandler = new server_1.DefaultRequestHandler(agentCard, new server_1.InMemoryTaskStore(), new ProxyExecutor());
+    const jsonRpc = (0, express_2.jsonRpcHandler)({
+        requestHandler,
+        userBuilder: passthroughUserBuilder
+    });
+    const rest = (0, express_2.restHandler)({
+        requestHandler,
+        userBuilder: passthroughUserBuilder
+    });
     app.get("/.well-known/agent.json", (_req, res) => {
+        res.status(200).json(agentCard);
+    });
+    const forwardJsonRpc = (req, res, next) => {
+        const originalUrl = req.url;
+        req.url = "/a2a/jsonrpc";
+        jsonRpc(req, res, (err) => {
+            req.url = originalUrl;
+            if (err)
+                return next(err);
+            if (res.headersSent)
+                return;
+            return next();
+        });
+    };
+    app.post("/.well-known/agent.json", (req, res, next) => {
+        if (req.body && typeof req.body === "object" && "jsonrpc" in req.body) {
+            return forwardJsonRpc(req, res, next);
+        }
         res.status(200).json(agentCard);
     });
     app.get(`/${sdk_1.AGENT_CARD_PATH}`, (0, express_2.agentCardHandler)({
         agentCardProvider: requestHandler
     }));
-    app.use("/a2a/jsonrpc", (0, express_2.jsonRpcHandler)({
-        requestHandler,
-        userBuilder: passthroughUserBuilder
-    }));
-    app.use("/a2a/rest", (0, express_2.restHandler)({
-        requestHandler,
-        userBuilder: passthroughUserBuilder
-    }));
+    app.post(`/${sdk_1.AGENT_CARD_PATH}`, (req, res, next) => {
+        if (req.body && typeof req.body === "object" && "jsonrpc" in req.body) {
+            return forwardJsonRpc(req, res, next);
+        }
+        return (0, express_2.agentCardHandler)({
+            agentCardProvider: requestHandler
+        })(req, res, next);
+    });
+    app.use("/a2a/jsonrpc", jsonRpc);
+    app.use("/a2a/rest", rest);
     app.get("/health", (_req, res) => {
         res.status(200).json({
             status: "ok",

@@ -48,7 +48,7 @@ async function acquirePowerPlatformTokenOBO(userToken) {
     }
     try {
         const claims = JSON.parse(Buffer.from(result.accessToken.split(".")[1], "base64").toString("utf8"));
-        console.log("OBO token claims (aud, scp):", { aud: claims?.aud, scp: claims?.scp });
+        console.log("OBO token claims (aud, scp):", JSON.stringify({ aud: claims?.aud, scp: claims?.scp }));
     }
     catch {
         console.warn("Failed to decode OBO token claims.");
