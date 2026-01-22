@@ -1,0 +1,22 @@
+{
+  "IsEncrypted": false,
+  "Values": {
+    "AzureWebJobsStorage": "UseDevelopmentStorage=true",
+    "FUNCTIONS_WORKER_RUNTIME": "node",
+    "AzureWebJobsFeatureFlags": "DisableWorkerIndexing",
+    "PUBLIC_BASE_URL": "http://localhost:7071",
+
+    "TENANT_ID": "00000000-0000-0000-0000-000000000000",
+
+    "COPILOT_INVOKE_CLIENT_ID": "00000000-0000-0000-0000-000000000000",
+    "COPILOT_INVOKE_CLIENT_SECRET": "your-client-secret-here",
+
+    "POWERPLATFORM_RESOURCE": "https://api.powerplatform.com",
+
+    "COPILOT_STUDIO_CONVERSATION_URL": "https://your-environment-id.environment.api.powerplatform.com/copilotstudio/dataverse-backed/authenticated/bots/your_botId/conversations?api-version=2022-03-01-preview",
+    "COPILOT_STUDIO_BOT_ID": "your_botId",
+    "COPILOT_STUDIO_ENVIRONMENT_URL": "https://your-environment-id.environment.api.powerplatform.com",
+
+    "DEV_BYPASS_DOWNSTREAM": "false"
+  }
+}
