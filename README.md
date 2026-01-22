@@ -178,8 +178,8 @@ Copy `local.settings.sample.json` to `local.settings.json` and configure:
 
 ### Finding Copilot Studio URLs
 
-1. Go to **Copilot Studio** → Your agent → **Channels** → **Direct Line**
-2. Copy the **Token Endpoint** URL
+1. Go to **Copilot Studio** → Your agent → **Channels** → **Web App**
+2. Find the **Connection string** (Token Endpoint URL)
 3. Extract:
    - **Environment URL**: The base URL (e.g., `https://xxxxx.environment.api.powerplatform.com`)
    - **Bot ID**: The bot identifier in the URL path
