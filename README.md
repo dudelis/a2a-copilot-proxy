@@ -2,6 +2,51 @@
 
 An Azure Functions-based proxy that implements the [Agent-to-Agent (A2A) protocol](https://github.com/google/A2A) to expose a Copilot Studio agent as an A2A-compatible endpoint. This enables Copilot Studio agents to communicate with other A2A-compliant agents, including other Copilot Studio agents.
 
+## Problem Statement
+
+### The Challenge
+
+**Copilot Studio agents cannot natively communicate with each other or with external A2A-compatible systems.**
+
+Copilot Studio uses a proprietary Direct Line API for agent communication, while the industry is moving toward the open [A2A (Agent-to-Agent) protocol](https://github.com/google/A2A) for interoperability between AI agents. This creates several challenges:
+
+1. **Agent Isolation**: Each Copilot Studio agent operates independently, unable to leverage capabilities of other specialized agents
+2. **No Standard Protocol**: Copilot Studio's Direct Line API is not compatible with A2A protocol clients
+3. **Limited Reusability**: You can't easily reuse a Copilot Studio agent from other platforms or orchestrators that support A2A
+4. **Authentication Complexity**: Even if protocols aligned, token formats and audiences differ between systems
+
+### The Solution
+
+This **A2A Proxy** acts as a bridge:
+
+```
+┌──────────────────────────────────┐         ┌──────────────────────────────────┐
+│  ANY A2A-COMPATIBLE CLIENT       │         │  YOUR COPILOT STUDIO AGENT       │
+│  ─────────────────────────────   │         │  ─────────────────────────────   │
+│  • Other Copilot Studio agents   │         │  • Specialized knowledge         │
+│  • Custom A2A orchestrators      │   A2A   │  • Connected to internal systems │
+│  • Third-party AI platforms      │ ◄─────► │  • Custom plugins/connectors     │
+│  • Any OAuth + A2A client        │ Proxy   │  • Trained on your data          │
+└──────────────────────────────────┘         └──────────────────────────────────┘
+```
+
+**Now you can:**
+- ✅ Call a Copilot Studio agent from **another Copilot Studio agent** using A2A
+- ✅ Integrate Copilot Studio into **any A2A-compatible orchestration framework**
+- ✅ Expose your agent to **external partners** using the standard A2A protocol
+- ✅ Build **multi-agent systems** where specialized agents collaborate
+- ✅ Use standard **OAuth 2.0 authentication** for secure agent-to-agent communication
+
+### Example Use Cases
+
+| Scenario | How A2A Proxy Helps |
+|----------|---------------------|
+| **HR + IT Support** | HR Copilot calls IT Copilot via A2A to check equipment availability when onboarding new employees |
+| **Sales + Inventory** | Sales Copilot queries Inventory Copilot via A2A to confirm stock before promising delivery dates |
+| **Multi-tenant Platform** | External partners call your Copilot via A2A using their own OAuth tokens |
+| **Agent Orchestration** | A central orchestrator routes requests to specialized Copilot agents based on intent |
+| **Gradual Migration** | Expose legacy Copilot agents via A2A while building new agents on different platforms |
+
 ## Architecture
 
 ```
